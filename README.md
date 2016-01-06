@@ -6,7 +6,7 @@ The conig.h file should contain everything to configure the system to your needs
 
 ## MQTT
 The path is build up like this: 
-'<topic>/<id>/<endpoint>'
+`<topic>/<id>/<endpoint>`
 e.g.: DMX/1/set
 
 ### MQTT endpoints
