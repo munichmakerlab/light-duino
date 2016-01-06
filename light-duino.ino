@@ -15,7 +15,6 @@
   * ToDo: 
   * - Remove WiFi Manager for more security  
   * - external switch to set all lights to off
-  * - checksum for EEPROM, to avoid problems when size changes 
   */
  
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
