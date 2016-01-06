@@ -1,214 +1,240 @@
-#include <DmxSimple.h>
 
-#include <SPI.h>
-#include <Ethernet.h>
+/*
+ *  light-duino v2
+ *  MQTT <-> DMX controller with hw switches, based on ESP8266 
+ *  See attached Readme.md for details
+ *  
+ *  This is based on the work of Jorgen (aka Juergen Skrotzky, JorgenVikingGod@gmail.com), buy him a beer. ;-) 
+ *  Rest if not noted otherwise by Peter Froehlich, tarwin@tarwin.de - Munich Maker Lab e.V. (January 2016)
+ *  
+ *  Published under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+ *  You'll find a copy of the licence text in this repo. 
+ */
 
-byte switch_pin[] = {6,2,4,5};
-byte dmx_channels[] = {1,2,3,4};
-
-// DEBOUNCE VARS
-int buttonState[] = {LOW,LOW,LOW,LOW};             // the current reading from the input pin
-int lastButtonState[] = {LOW,LOW,LOW,LOW};   // the previous reading from the input pin
-long lastDebounceTime[] = {0,0,0,0};  // the last time the output pin was toggled
-
-long debounceDelay = 50;
-
-// Enter a MAC address and IP address for your controller below.
-// The IP address will be dependent on your local network:
-byte mac[] = {  
-  0xDE, 0xAD, 0xBE, 0xEF, 0x1E, 0xED
-};
-//IPAddress ip(192, 168, 0, 180);
-byte ip[] = { 192, 168, 0, 180 };
-
-// Initialize the Ethernet server library
-// with the IP address and port you want to use
-// (port 80 is default for HTTP):
-EthernetServer server(80);
-
-String readString = String();
-
-// vars to hold state
-int dmx[] = {0,0,0,0,0,0,0,0,0,0,0,0};
-
-
-void toggle_channel(int channel) {
-  if (dmx[channel] > 0) {
-    channel_off(channel);
-  } else {
-    channel_on(channel);
-  } 
-}
-
-void channel_on(int channel) {
-  DmxSimple.write(channel, 255);
-  dmx[channel] = 255;
-  Serial.print("Switch On: ");
-  Serial.println(channel);
-}
-
-void channel_off(int channel) {
-  DmxSimple.write(channel, 0);
-  dmx[channel] = 0;
-  Serial.print("Switch Off: ");
-  Serial.println(channel);
-}
-
-void debounce(int channel) {
-  // read the state of the switch into a local variable:
-  int reading = digitalRead(switch_pin[channel]);
-
-  // check to see if you just pressed the button
-  // (i.e. the input went from LOW to HIGH),  and you've waited
-  // long enough since the last press to ignore any noise:  
-
-  // If the switch changed, due to noise or pressing:
-  if (reading != lastButtonState[channel]) {
-    // reset the debouncing timer
-    lastDebounceTime[channel] = millis();
-  }
+ /*
+  * ToDo: 
+  * - Remove WiFi Manager for more security  
+  * - external switch to set all lights to off
+  * - checksum for EEPROM, to avoid problems when size changes 
+  */
  
-  if ((millis() - lastDebounceTime[channel]) > debounceDelay) {
-    // whatever the reading is at, it's been there for longer
-    // than the debounce delay, so take it as the actual current state:
+#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
+#include <PubSubClient.h>         //https://github.com/Imroy/pubsubclient
+#include <ESPDMX.h>               //https://github.com/Rickgg/ESP-Dmx
 
-    // if the button state has changed:
-    if (reading != buttonState[channel]) {
-      buttonState[channel] = reading;
+// for WiFiManager:
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiClient.h>
 
-      // only toggle the LED if the new button state is HIGH
-      if (buttonState[channel] == HIGH) {
-        toggle_channel(dmx_channels[channel]);
+#include <EEPROM.h>
+
+#include "config.h"
+#include "helpers.h"
+#include "mqtt.h"
+#include "dmx.h"
+#include "switches.h"
+
+/*
+ * MQTT methods
+ */
+
+// callback method to handle received mqtt messages
+void mqttMessageReceived(const MQTT::Publish& pub) {
+  // handle message arrived
+  mqttTopic = pub.topic();
+  // OTA: "dmx/<id>/ota", bin file to flash
+  if (mqttTopic == String(strTopicPrefixID + "ota")) {
+
+    //very cool, but kinda dangerous?? disabled for now...
+    return;
+    
+    uint32_t startTime = millis();
+    uint32_t size = pub.payload_len();
+    if (size == 0)
+      return;
+    DEBUG_PRINT("Receiving OTA of ");
+    DEBUG_PRINT(size);
+    DEBUG_PRINTLN(" bytes...");
+    Serial.setDebugOutput(true);
+    if (ESP.updateSketch(*pub.payload_stream(), size, true, false)) {
+      pub.payload_stream()->stop();
+      DEBUG_PRINTLN("Clearing retained message.");
+      mqttClient.publish(MQTT::Publish(pub.topic(), "").set_retain());
+      mqttClient.disconnect();
+      Serial.printf("Update Success: %u\nRebooting...\n", millis() - startTime);
+      ESP.restart();
+      delay(10000);    
+    }
+  } else {
+    mqttPayload = pub.payload_string() + "0"; // trailing 0 needed for wonky but fast field separation later. 
+    mqttNewMessage = true;
+    DEBUG_PRINTLN("receive MQTT: topic='" + mqttTopic + "', message='" + mqttPayload + "'");
+  }
+}
+
+
+bool initializeMQTT() {
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!mqttClient.connected()) {
+      if (connectMQTT(mqtt_user, mqtt_pass, mqtt_host)) {
+        publishMQTTMessage(strTopicPrefixID + "controller", strMac + "," + strIPAddr);
+        // bind callback function to handle incoming mqtt messages
+        mqttClient.set_callback(mqttMessageReceived);
+
+        // define what to listen to
+        subscribeMQTTTopic(strTopicPrefixID + "set");
+        
       }
     }
+    return true;
   }
-
-  // save the reading.  Next time through the loop,
-  // it'll be the lastButtonState:
-  lastButtonState[channel] = reading;
+  return false;
 }
+
+
+void configModeCallback () {
+  digitalWrite(BUILTIN_LED, LOW);  
+}
+
+void processMQTTMessage() {
+  // reset flag
+  mqttNewMessage = false;
   
-  
-void check_switches() {
-  debounce(0);
-  debounce(1);
-  debounce(2);
-  debounce(3);
+  // DMX 'set' Topic: "DMX/<device_id>/set" 
+  // payload syntax: multiple comma-sep-fields consisting of <dmx_id>:<brightness value (0-255) or 1000 to switch between on/dimmed and off>
+  // e.g.: 1:0,2:128,3:255,4:x  
+  if (mqttTopic == String(strTopicPrefixID + "set")) {
+    char input[mqttPayload.length()]; // +1 neccessary for \0??
+    mqttPayload.toCharArray(input, mqttPayload.length());
+    
+    // Read each command pair 
+    char* command = strtok(input, ",");
+    while (command != 0) {
+        // Split the command in two values
+        char* separator = strchr(command, ':');
+        if (separator != 0) {
+            // Actually split the string in 2: replace ':' with 0
+            *separator = 0;
+            int dmxID = atoi(command);
+            if (dmxID <= intMaxChannel) {
+              ++separator;
+            
+              int dmxValue = atoi(separator);
+              // 255 is the maximum DMX understands. higher values are errors or special triggers
+              if (dmxValue == 1000) {
+                toggleChannel(dmxID);
+                continue; 
+              } 
+              
+              if (dmxValue > 255) {
+                dmxValue = 255; 
+              }
+              //prepare dmx output: 
+              channelValue(dmxID, dmxValue);
+            } 
+        }
+        // Find the next command in input string
+        command = strtok(0, ",");
+    }
+    //apply changes to dmx
+    dmxApplyChanges();
+  }
 }
 
 
-void setup_ethernet() {
-  // start the Ethernet connection and the server:
-  Ethernet.begin(mac, ip);
-  server.begin();
-  Serial.print("server is at ");
-  Serial.println(Ethernet.localIP());
-}
+/*
+ * ==================
+ *      S E T U P
+ * ==================
+ */
 
 void setup() {
-  Serial.begin(9600);
+  //debug Led on ESP
+  pinMode(BUILTIN_LED, OUTPUT); 
+  digitalWrite(BUILTIN_LED, HIGH);  // means led is off.
   
-  setup_ethernet();
-    
-  DmxSimple.usePin(3);
-  DmxSimple.maxChannel(12);
+  // initial serial port
+  if(_debug)
+    Serial.begin(9600);
+  DEBUG_PRINTLN("");
+  DEBUG_PRINT("MQTT <-> DMX (");
+  DEBUG_PRINT(ESP.getChipId());
+  DEBUG_PRINTLN(")");
+  DEBUG_PRINTLN(__TIMESTAMP__);
+  DEBUG_PRINT("Sketch size: ");
+  DEBUG_PRINTLN(ESP.getSketchSize());
+  DEBUG_PRINT("Free size: ");
+  DEBUG_PRINTLN(ESP.getFreeSketchSpace());
+
+  // Mac address
+  WiFi.macAddress(mac);
+  byteToHexString(strMac, mac, 6, ":");
+  DEBUG_PRINTLN("MAC: ");
+  DEBUG_PRINTLN(strMac);
   
-  pinMode(switch_pin[0], INPUT); 
-  pinMode(switch_pin[1], INPUT); 
-  pinMode(switch_pin[2], INPUT); 
-  pinMode(switch_pin[3], INPUT); 
-  
-}
+  // define topics
+  strTopicPrefix = strTopic + "/";
+  strTopicPrefixID = strTopicPrefix + strDeviceID + "/";
 
+  // init DMX and set initial state 
+  setupDmx();
 
-void loop() { 
-  check_switches();
+  // setup switches
+  setupSwitches();
 
-  // listen for incoming clients
-  EthernetClient client = server.available();
-  if (client) {
-    Serial.println("new client");
-    // an http request ends with a blank line
-    boolean currentLineIsBlank = true;
-    int reply_type = 0;
-    while (client.connected()) {
-      if (client.available()) {
-        char c = client.read();
-        
-        if (readString.length() < 100) {
-          //store characters to string 
-          readString += c; 
-        } 
-
-        if (c == '\n') {
-          readString.trim();
-          Serial.println(readString);
-          if (readString.startsWith("GET /status.json")) {
-            reply_type = 1;
-          } else if (readString.startsWith("GET /set/on/")) {
-            reply_type = 1;
-            byte i = byte(readString.charAt(12)) - 49;
-            if (i < 4)
-              channel_on(dmx_channels[i]);
-            Serial.println(i);
-          } else if (readString.startsWith("GET /set/off/")) {
-            reply_type = 1;
-            byte i = byte(readString.charAt(13)) - 49;
-            if (i < 4)
-             channel_off(dmx_channels[i]);
-          }
-          
-          // if you've gotten to the end of the line (received a newline
-          // character) and the line is blank, the http request has ended,
-          // so you can send a reply
-          if (currentLineIsBlank) {
-            // send a standard http response header
-            client.println("HTTP/1.1 200 OK"); 
-            client.println("Connection: close");  // the connection will be closed after completion of the response
-            
-            if (reply_type == 0) {
-              client.println("Content-Type: text/html");
-              client.println("Refresh: 5");  // refresh the page automatically every 5 sec
-              client.println();
-              client.println("<!DOCTYPE HTML>");
-              client.println("<html>");
-              
-              // output the value of each analog input pin
-              for (int channel = 0; channel < sizeof(dmx_channels); channel++) {
-                
-                client.print("switch ");
-                client.print(channel);
-                client.print(" is ");
-                client.print(dmx[dmx_channels[channel]]);
-                client.println("<br />");
-              }
-              client.println("</html>");
-            } else if (reply_type = 1) {
-              client.println("Content-Type: text/plain");
-              client.println();
-              client.print("{ \"status\": [");
-              for (int channel = 0; channel < sizeof(dmx_channels); channel++) {
-                if (channel > 0)
-                  client.print(",");             
-                client.print(dmx[dmx_channels[channel]]);
-              }
-              client.println("]}");
-            }
-            break;
-          }
-
-          currentLineIsBlank = true;
-          readString = "";
-        } else if (c != '\r') {
-          // you've gotten a character on the current line
-          currentLineIsBlank = false;
-        }
-      }
-    }
-    // give the web browser time to receive the data
-    delay(1);
-    // close the connection:
-    client.stop();
-    Serial.println("client disconnected");
+  //WiFiManager
+  //Local intialization. Once its business is done, there is no need to keep it around
+  WiFiManager wifiManager;
+  //reset settings - for testing
+  //wifiManager.resetSettings();
+  //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+  wifiManager.setAPCallback(configModeCallback);
+  //fetches ssid and pass and tries to connect
+  //if it does not connect it starts an access point with the specified name
+  //here  "AutoConnectAP"
+  wifiManager.setAPConfig(IPAddress(10,0,0,1), IPAddress(10,0,0,1), IPAddress(255,255,255,0));
+  //and goes into a blocking loop awaiting configuration
+  String strAPName = String(mqtt_client_id) + String("-") + String(ESP.getChipId());
+  if(!wifiManager.autoConnect(strAPName.c_str())) {
+    DEBUG_PRINTLN("failed to connect and hit timeout");
+    //reset and try again, or maybe put it to deep sleep
+    ESP.reset();
+    delay(1000);
   }
+   
+  DEBUG_PRINTLN("WiFi connected!");
+  DEBUG_PRINTLN("IP address: ");
+  
+  IPAddress local = WiFi.localIP();
+  strIPAddr = String(local[0]) + "." + String(local[1]) + "." + String(local[2]) + "." + String(local[3]);
+  DEBUG_PRINTLN(strIPAddr);
+  
+  // check for connection
+  initializeMQTT();
 }
+
+
+/*
+ * ==================
+ *      L O O P
+ * ==================
+ */
+
+void loop() {    
+  // check for connection and process MQTT
+  processMQTTLoop();
+  
+  // process new mqtt messages
+  if (mqttNewMessage)
+    processMQTTMessage();
+
+  // check switches
+  if (switchesEnabled)
+    checkSwitches();
+  
+  // save dmx state 
+  saveDMXState();
+}
+
