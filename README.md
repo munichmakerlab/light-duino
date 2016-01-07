@@ -25,6 +25,7 @@ The internal Pull-ups on these pins will be activated if the pins are configured
 A DMX transciver like MAX485 needs to be connected to GPIO 2 (U1TXD) of the ESP
 
 ## Ext. libraries
+You will need to install ESPDMX and the PubSubClient (it's a fork from the one in the Lib. Manager!) as a zip. 
 
 * [WiFiManager](https://github.com/tzapu/WiFiManager)
 * [PubSubClient](https://github.com/Imroy/pubsubclient)
