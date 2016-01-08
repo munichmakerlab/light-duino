@@ -20,11 +20,6 @@ DMXESPSerial dmx;
 // vars to hold state
 int dmxChannels[intMaxChannel] = { 0 };
 
-// init EEPROM vars
-unsigned long triggedChange    = 0;
-bool dmxChangedStates          = 0;
-
-
 // State communication
 
 void updateStatesEntry() {
@@ -33,8 +28,9 @@ void updateStatesEntry() {
     strStates = strStates + i + ":" + dmxChannels[i] + ",";
   } 
   strStates.remove(strStates.length() - 1);
-    
-  publishMQTTMessage(strTopicPrefixID + "state", strStates);  
+
+  // set mqtt state msg with retain set to true
+  publishMQTTMessage(strTopicPrefixID + "state", strStates, true);  
 }
 
 // Channel handling
@@ -72,6 +68,8 @@ void dmxApplyChanges() {
   if (!dmxChangedStates) 
     triggedChange = millis();
     
+  lastChange = millis();
+    
   dmxChangedStates = 1;
   DEBUG_PRINTLN("Applied pending changes to DMX");
   
@@ -86,72 +84,12 @@ void allChannelsOff() {
   dmxApplyChanges();
 }
 
-// EEPROM methods
-
-void forceEEPROMWrite() {
-  triggedChange = millis() - waitBetweenSaves;
-  dmxChangedStates = 1;
-}
-
-void saveDMXState() {
-  if (dmxChangedStates) {
-    if (millis() >= triggedChange + waitBetweenSaves) {  
-      // calculate checksum 
-      int checksum = 0; 
-      for( int i = 0; i < intMaxChannel; i++ ) {
-        checksum += dmxChannels[i];
-      }
-      checksum = checksum / intMaxChannel;
-      EEPROM.write(0, checksum);
-          
-      for( int i = 0; i < intMaxChannel; i++ ) {
-        EEPROM.write(i + 1, dmxChannels[i]);
-      }
-      EEPROM.commit();
-      dmxChangedStates = 0;
-      DEBUG_PRINT("Saved channel state, checksum: ");
-      DEBUG_PRINTLN(checksum);
-    }
-  }
-}
-
-void recallState() {
-  int saved_checksum = EEPROM.read(0);
-  int checksum = 0;
-  int dmxValue; 
-  
-  for( int i = 0; i < intMaxChannel; i++ ) {
-    dmxValue = EEPROM.read(i + 1);
-    channelValue(i, dmxValue);
-    checksum += dmxValue;
-  } 
-  checksum = checksum / intMaxChannel;  // not perfect, better then nothing. 
-
-  if (saved_checksum == checksum) {
-    dmxApplyChanges();
-    dmxChangedStates = 0;
-  } else {
-    DEBUG_PRINT("Checksum verification failed! Saved/Calculated: ");
-    DEBUG_PRINT(saved_checksum);
-    DEBUG_PRINT("/");
-    DEBUG_PRINTLN(checksum);
-    
-    allChannelsOff();
-    forceEEPROMWrite();
-  }
-}
-
 
 // setup functions
 
 void setupDmx() {
   dmx.init(intMaxChannel);
   
-  // init ESP EEPROM
-  EEPROM.begin(intMaxChannel + 1); // +1 for checksum
-
-  DEBUG_PRINTLN("Recalling saved channel state:");
-  recallState();
 }
 
 #endif 

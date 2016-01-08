@@ -14,7 +14,7 @@
  */
 
 /*
- * Debug mode
+ * Debug Serial Output
  */
 
 #define _debug 1
@@ -49,12 +49,12 @@ const char *mqtt_client_id =  "DMX" + strDeviceID;
 // Switches
 const bool switchesEnabled = 1;
 // indices match to each other
-int switchPin[]           = {4, 12, 14, 13}; // possible values on ESP12e: 4, 12-15 
+int switchPin[]           = {4, 12, 14, 13}; // tested values on ESP12e: 4, 12-14 
 int matchingDmxChannels[] = {1, 2, 3 , 4};
 
 // EEPROM save delay
-unsigned long waitBetweenSaves = 60000; // in ms
-
+unsigned long minimumWaitBetweenSaves = 60000; // in ms
+unsigned long maximumWaitBetweenSaves = 600000;
 
 /*
  * helper variables for connection (ip, mac)
@@ -65,5 +65,9 @@ String strMac;
 String strTopicPrefix;
 String strTopicPrefixID;
 
+// init EEPROM vars
+unsigned long triggedChange    = 0;
+unsigned long lastChange       = 0;
+bool dmxChangedStates          = 0;
 
 #endif //config_h

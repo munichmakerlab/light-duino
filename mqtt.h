@@ -28,10 +28,14 @@ WiFiClient client;
 PubSubClient mqttClient(client, server);
 
 // handle received serial data
-void publishMQTTMessage(String strTopic, String strMessage) {
+void publishMQTTMessage(String strTopic, String strMessage, bool bRetain=false) {
   // publish mqtt message with given topic
-  mqttClient.publish(strTopic, strMessage);
-  Serial.println("send MQTT: topic='" + strTopic + "', message='" + strMessage + "'");
+  if (bRetain)
+    mqttClient.publish(MQTT::Publish(strTopic, strMessage).set_retain().set_qos(1));
+  else
+    mqttClient.publish(strTopic, strMessage);
+  DEBUG_PRINT("send MQTT: topic='" + strTopic + "', message='" + strMessage + "', retain=");
+  DEBUG_PRINTLN(bRetain);
 }
 
 void subscribeMQTTTopic(String strTopic) {

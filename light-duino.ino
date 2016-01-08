@@ -15,6 +15,8 @@
   * ToDo: 
   * - Remove WiFi Manager for more security  
   * - external switch to set all lights to off
+  * - make OTA work
+  * - TLS MQTT
   */
  
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
@@ -33,6 +35,7 @@
 #include "helpers.h"
 #include "mqtt.h"
 #include "dmx.h"
+#include "eeprom.h"
 #include "switches.h"
 
 /*
@@ -43,7 +46,7 @@
 void mqttMessageReceived(const MQTT::Publish& pub) {
   // handle message arrived
   mqttTopic = pub.topic();
-  // OTA: "dmx/<id>/ota", bin file to flash
+  // OTA: "<topic>/<id>/ota", bin file to flash
   if (mqttTopic == String(strTopicPrefixID + "ota")) {
 
     //very cool, but kinda dangerous?? disabled for now...
@@ -78,7 +81,7 @@ bool initializeMQTT() {
   if (WiFi.status() == WL_CONNECTED) {
     if (!mqttClient.connected()) {
       if (connectMQTT(mqtt_user, mqtt_pass, mqtt_host)) {
-        publishMQTTMessage(strTopicPrefixID + "controller", strMac + "," + strIPAddr);
+        publishMQTTMessage(strTopicPrefixID + "controller", strMac + "," + strIPAddr, true);
         // bind callback function to handle incoming mqtt messages
         mqttClient.set_callback(mqttMessageReceived);
 
@@ -177,8 +180,11 @@ void setup() {
   strTopicPrefix = strTopic + "/";
   strTopicPrefixID = strTopicPrefix + strDeviceID + "/";
 
-  // init DMX and set initial state 
+  // init DMX  
   setupDmx();
+
+  // init EEPROM and set initial state
+  setupEEPROM();
 
   // setup switches
   setupSwitches();
