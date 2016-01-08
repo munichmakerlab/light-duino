@@ -27,7 +27,7 @@
 #define strDeviceID 1
 
 // maximum number of channels 
-#define intMaxChannel 12
+#define intMaxChannel 60
 
 // maximum mqtt input size
 #define intMaxInputSize 100
@@ -42,14 +42,14 @@ String strTopic = "DMX";
 // mqtt broker config
 const char *mqtt_host      =  "iot.eclipse.org";
 const int   mqtt_port      =  1883;
-const char *mqtt_user      =  "";
-const char *mqtt_pass      =  "";
+const char *mqtt_user      =  "user";
+const char *mqtt_pass      =  "pass";
 const char *mqtt_client_id =  "DMX" + strDeviceID;
 
 // Switches
 const bool switchesEnabled = 1;
 // indices match to each other
-int switchPin[]           = {4, 12, 13, 14}; // possible values on ESP12e: 4, 12-15 
+int switchPin[]           = {4, 12, 14, 13}; // possible values on ESP12e: 4, 12-15 
 int matchingDmxChannels[] = {1, 2, 3 , 4};
 
 // EEPROM save delay

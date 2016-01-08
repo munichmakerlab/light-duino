@@ -232,7 +232,10 @@ void loop() {
   // check switches
   if (switchesEnabled)
     checkSwitches();
-  
+
+  // set current dmx channels on bus  
+  dmx.update();
+
   // save dmx state 
   saveDMXState();
 }
