@@ -50,7 +50,8 @@ const char *mqtt_client_id =  "DMX" + strDeviceID;
 const bool switchesEnabled = 1;
 // indices match to each other
 int switchPin[]           = {4, 12, 14, 13}; // tested values on ESP12e: 4, 12-14 
-int matchingDmxChannels[] = {1, 2, 3 , 4};
+int matchingDmxChannels[] = {1, 2, 3, 4};
+int matchingDmxChannelsDoubleClick[] = {16, 15, 14, 13};
 
 // EEPROM save delay
 unsigned long minimumWaitBetweenSaves = 60000; // in ms

@@ -18,9 +18,18 @@ int arrayEntries = sizeof(matchingDmxChannels)/sizeof(int);
 // DEBOUNCE VARS
 int buttonState[sizeof(matchingDmxChannels)] = {HIGH};      // the current reading from the input pin
 int lastButtonState[sizeof(matchingDmxChannels)] = {HIGH};  // the previous reading from the input pin
-long lastDebounceTime[sizeof(matchingDmxChannels)] = {0};  // the last time the output pin was toggled
+bool activated[sizeof(matchingDmxChannels)] = {0};     // was the switch activated?
+long lastActivationTime[sizeof(matchingDmxChannels)] = {0};     // record when the last action was triggered
+long lastDebounceTime[sizeof(matchingDmxChannels)] = {0};   // the last time the output pin was toggled
 
+long successionClickTimeout = 250;
 long debounceDelay = 50;
+
+void activateChannel(int index, int channel) {
+  activated[index] = 0;
+  toggleChannel(channel);
+  dmxApplyChanges();  
+}
 
 // Debounce by Severin Schols
 void debounce(int index) {
@@ -40,19 +49,31 @@ void debounce(int index) {
   if ((millis() - lastDebounceTime[index]) > debounceDelay) {
     // whatever the reading is at, it's been there for longer
     // than the debounce delay, so take it as the actual current state:
+  
+    // if the activation flag is set, and we are over the double click timeout, trigger the action
+    if (activated[index] && (millis() - lastActivationTime[index]) > successionClickTimeout) {
+      activateChannel(index, matchingDmxChannels[index]);
+    }
 
     // if the button state has changed:
     if (reading != buttonState[index]) {
       buttonState[index] = reading;
 
-      // only toggle the LED if the new button state is HIGH
+      // only toggle the activation if the new button state is HIGH
       if (buttonState[index] == LOW) {
-        DEBUG_PRINT("Got action from button on pin ");
+        DEBUG_PRINT("Got action from button on pin "); 
         DEBUG_PRINTLN(switchPin[index]);
-        toggleChannel(matchingDmxChannels[index]);
-        dmxApplyChanges();
-      }
-    }
+
+        // if the activation flag is already set, trigger the double click action
+        if (activated[index]) { 
+          activateChannel(index, matchingDmxChannelsDoubleClick[index]);
+        } else {
+          // if not, just activate the change
+          lastActivationTime[index] = millis();
+          activated[index] = 1;
+        }
+      } 
+    } 
   }
 
   // save the reading.  Next time through the loop,
