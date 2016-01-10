@@ -24,7 +24,11 @@ String mqttPayload = "";
 IPAddress server(0, 0, 0, 0);
 
 // initial mqtt client with mqtt broker server ip address
-WiFiClient client;
+if (mqtt_tls) {
+  WiFiClientSecure client;
+} else {
+  WiFiClient client;
+}
 PubSubClient mqttClient(client, server);
 
 // handle received serial data

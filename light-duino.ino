@@ -16,7 +16,6 @@
   * - Remove WiFi Manager for more security  
   * - external switch to set all lights to off
   * - make OTA work
-  * - TLS MQTT
   */
  
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino

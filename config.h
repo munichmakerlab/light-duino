@@ -41,7 +41,8 @@ String strTopic = "DMX";
 
 // mqtt broker config
 const char *mqtt_host      =  "iot.eclipse.org";
-const int   mqtt_port      =  1883;
+const int   mqtt_port      =  8883;
+const bool  mqtt_tls       =  1;
 const char *mqtt_user      =  "user";
 const char *mqtt_pass      =  "pass";
 const char *mqtt_client_id =  "DMX" + strDeviceID;
