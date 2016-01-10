@@ -85,10 +85,12 @@ bool initializeMQTT() {
 
         // define what to listen to
         subscribeMQTTTopic(strTopicPrefixID + "set");
-        
+
+        return true;
       }
+    } else {
+      return true;
     }
-    return true;
   }
   return false;
 }
@@ -248,11 +250,15 @@ void setup() {
 
 void loop() {    
   // check for connection and process MQTT
-  processMQTTLoop();
-  
-  // process new mqtt messages
-  if (mqttNewMessage)
-    processMQTTMessage();
+  if (processMQTTLoop()) {
+    // MQTT connection is alive  
+    // process new mqtt messages
+    if (mqttNewMessage)
+      processMQTTMessage();
+  } else {
+    // No MQTT Connection, reinitialize
+    initializeMQTT();
+  }
 
   // check switches
   if (switchesEnabled)

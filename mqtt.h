@@ -59,10 +59,13 @@ bool connectMQTT(String strUser, String strPass, String strHost, uint16_t port =
   return MQTTconnected;
 }
 
-void processMQTTLoop() {
+bool processMQTTLoop() {
   // handle mqtt messages and wifi connection
-  if (mqttClient.connected())
+  if (mqttClient.connected()) {
     mqttClient.loop();
+    return true;
+  }
+  return false;
 }
 
 
