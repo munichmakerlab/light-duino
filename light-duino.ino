@@ -13,7 +13,6 @@
 
  /*
   * ToDo: 
-  * - Remove WiFi Manager for more security  
   * - external switch to set all lights to off
   * - make OTA work
   */
@@ -144,6 +143,51 @@ void processMQTTMessage() {
   }
 }
 
+void setupWifi() {
+  if (useWifiManager) {
+    //WiFiManager
+    
+    //Local intialization. Once its business is done, there is no need to keep it around
+    WiFiManager wifiManager;
+    //reset settings - for testing
+    //wifiManager.resetSettings();
+    //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+    wifiManager.setAPCallback(configModeCallback);
+    //fetches ssid and pass and tries to connect
+    //if it does not connect it starts an access point with the specified name
+    //here  "AutoConnectAP"
+    wifiManager.setAPConfig(IPAddress(10,0,0,1), IPAddress(10,0,0,1), IPAddress(255,255,255,0));
+    //and goes into a blocking loop awaiting configuration
+    String strAPName = String(mqtt_client_id) + String("-") + String(ESP.getChipId());
+    if(!wifiManager.autoConnect(strAPName.c_str())) {
+      DEBUG_PRINTLN("failed to connect and hit timeout");
+      //reset and try again, or maybe put it to deep sleep
+      ESP.reset();
+      delay(1000);
+    }
+  } else {
+    long startConnectionAttempt = millis();
+
+    DEBUG_PRINTLN("Starting WiFi");
+    // use static wifi config
+    WiFi.begin(ssid, password);
+
+    // Wait for connection
+    while(WiFi.status() != WL_CONNECTED or millis() - startConnectionAttempt > wifiTimeout) {
+      delay(100);
+      DEBUG_PRINT(".");
+    }
+  }  
+   
+  DEBUG_PRINTLN("WiFi connected!");
+  DEBUG_PRINTLN("IP address: ");
+  
+  IPAddress local = WiFi.localIP();
+  strIPAddr = String(local[0]) + "." + String(local[1]) + "." + String(local[2]) + "." + String(local[3]);
+  DEBUG_PRINTLN(strIPAddr);
+  
+}
+
 
 /*
  * ==================
@@ -188,32 +232,8 @@ void setup() {
   // setup switches
   setupSwitches();
 
-  //WiFiManager
-  //Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wifiManager;
-  //reset settings - for testing
-  //wifiManager.resetSettings();
-  //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
-  wifiManager.setAPCallback(configModeCallback);
-  //fetches ssid and pass and tries to connect
-  //if it does not connect it starts an access point with the specified name
-  //here  "AutoConnectAP"
-  wifiManager.setAPConfig(IPAddress(10,0,0,1), IPAddress(10,0,0,1), IPAddress(255,255,255,0));
-  //and goes into a blocking loop awaiting configuration
-  String strAPName = String(mqtt_client_id) + String("-") + String(ESP.getChipId());
-  if(!wifiManager.autoConnect(strAPName.c_str())) {
-    DEBUG_PRINTLN("failed to connect and hit timeout");
-    //reset and try again, or maybe put it to deep sleep
-    ESP.reset();
-    delay(1000);
-  }
-   
-  DEBUG_PRINTLN("WiFi connected!");
-  DEBUG_PRINTLN("IP address: ");
-  
-  IPAddress local = WiFi.localIP();
-  strIPAddr = String(local[0]) + "." + String(local[1]) + "." + String(local[2]) + "." + String(local[3]);
-  DEBUG_PRINTLN(strIPAddr);
+  // setup WiFi
+  setupWifi(); 
   
   // check for connection
   initializeMQTT();

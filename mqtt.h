@@ -23,12 +23,8 @@ String mqttPayload = "";
 
 IPAddress server(0, 0, 0, 0);
 
-// initial mqtt client with mqtt broker server ip address
-if (mqtt_tls) {
-  WiFiClientSecure client;
-} else {
-  WiFiClient client;
-}
+WiFiClientSecure client;  // with TLS 
+//WiFiClient client;      // without TLS 
 PubSubClient mqttClient(client, server);
 
 // handle received serial data
@@ -68,5 +64,7 @@ void processMQTTLoop() {
   if (mqttClient.connected())
     mqttClient.loop();
 }
+
+
 
 #endif //mqtt_h

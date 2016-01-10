@@ -32,17 +32,19 @@
 // maximum mqtt input size
 #define intMaxInputSize 100
 
-// Wifi
+// Wifi - Use WifiManger for cool web admin interface if wifi client connection failes. 
+// May not be secure in production environment
+const bool useWifiManager  =  0;
 const char *ssid           =  "-";
-const char *pass           =  "-";
+const char *password       =  "-";
+const int wifiTimeout      =  20000;
 
 // mqtt topic
 String strTopic = "DMX";
 
 // mqtt broker config
 const char *mqtt_host      =  "iot.eclipse.org";
-const int   mqtt_port      =  8883;
-const bool  mqtt_tls       =  1;
+const int   mqtt_port      =  8883;   // default with TLS 8883, without 1883
 const char *mqtt_user      =  "user";
 const char *mqtt_pass      =  "pass";
 const char *mqtt_client_id =  "DMX" + strDeviceID;
