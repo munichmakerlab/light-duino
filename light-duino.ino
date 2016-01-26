@@ -257,6 +257,7 @@ void loop() {
       processMQTTMessage();
   } else {
     // No MQTT Connection, reinitialize
+    DEBUG_PRINTLN("Reinitializing MQTT connection");
     initializeMQTT();
   }
 

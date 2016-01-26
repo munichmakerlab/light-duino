@@ -50,8 +50,8 @@ bool connectMQTT(String strUser, String strPass, String strHost, uint16_t port =
   int retries = 0;
   while(!MQTTconnected && retries < 10) {
     retries++;
-    String strClientID = String(mqtt_client_id);
-    if (mqttClient.connect(MQTT::Connect(strClientID).set_auth(strUser, strPass).set_will(strTopicPrefixID + "controller", ",", 1, true))) {
+    //String strClientID = String(mqtt_client_id);
+    if (mqttClient.connect(MQTT::Connect(mqtt_client_id).set_auth(strUser, strPass).set_will(strTopicPrefixID + "controller", "", 1, true))) {
       MQTTconnected = true;
     }
     delay(10);
