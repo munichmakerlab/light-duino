@@ -266,7 +266,7 @@ void loop() {
     checkSwitches();
 
   // set current dmx channels on bus  
-  dmx.update();
+  updateDMX();
 
   // save dmx state 
   saveDMXState();

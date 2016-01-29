@@ -14,11 +14,30 @@
  */
 
 #include <ESPDMX.h>               //https://github.com/Rickgg/ESP-Dmx
-
+  
 DMXESPSerial dmx;
 
+
 // vars to hold state
-int dmxChannels[intMaxChannel] = { 0 };
+int dmxChannels[intMaxChannel] = { 255 };
+
+
+// rx tx switching logic
+
+void prepare_send() {
+  digitalWrite(rx_tx_switch_pin, HIGH);
+}
+
+void end_send() {
+  digitalWrite(rx_tx_switch_pin, LOW);
+}
+
+void updateDMX() {
+  prepare_send();
+  delay(10);
+  dmx.update();
+  end_send();
+}
 
 // State communication
 
@@ -63,7 +82,7 @@ void toggleChannel(int channel) {
 }
 
 void dmxApplyChanges() {
-  dmx.update();
+  updateDMX();
 
   if (!dmxChangedStates) 
     triggedChange = millis();
@@ -88,6 +107,7 @@ void allChannelsOff() {
 // setup functions
 
 void setupDmx() {
+  pinMode(rx_tx_switch_pin, OUTPUT);
   dmx.init(intMaxChannel);
   
 }

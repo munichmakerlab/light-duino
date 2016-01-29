@@ -32,6 +32,9 @@
 // maximum mqtt input size
 #define intMaxInputSize 100
 
+// DMX 
+#define rx_tx_switch_pin 16
+
 // Wifi - Use WifiManger for cool web admin interface if wifi client connection failes. 
 // May not be secure in production environment
 const bool useWifiManager  =  0;
