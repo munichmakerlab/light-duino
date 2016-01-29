@@ -35,6 +35,9 @@
 #include "dmx.h"
 #include "eeprom.h"
 #include "switches.h"
+#include <Ticker.h>
+
+Ticker DMXupdater;
 
 /*
  * MQTT methods
@@ -239,6 +242,9 @@ void setup() {
   
   // check for connection
   initializeMQTT();
+
+  // Update DMX every 0.01 seconds
+  DMXupdater.attach(0.01, updateDMX);
 }
 
 
@@ -264,9 +270,6 @@ void loop() {
   // check switches
   if (switchesEnabled)
     checkSwitches();
-
-  // set current dmx channels on bus  
-  updateDMX();
 
   // save dmx state 
   saveDMXState();

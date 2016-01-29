@@ -82,7 +82,8 @@ void toggleChannel(int channel) {
 }
 
 void dmxApplyChanges() {
-  updateDMX();
+  // Not necessary anymore, replaced by ticker interrupt
+  //updateDMX();
 
   if (!dmxChangedStates) 
     triggedChange = millis();
