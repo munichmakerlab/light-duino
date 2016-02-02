@@ -13,6 +13,10 @@
  *  You'll find a copy of the licence text in this repo. 
  */
 
+#define SPAM_TIMEOUT 10000
+long noSpamTimer;
+String noSpamCache;
+
 template <typename Generic>
 void DEBUG_PRINT(Generic text) {
   if(_debug) {
@@ -24,6 +28,16 @@ template <typename Generic>
 void DEBUG_PRINTLN(Generic text) {
   if(_debug) {
     Serial.println(text);    
+  }
+}
+
+void DEBUG_PRINTLN_NOSPAM(String text) {
+  if(_debug) {
+    if (text != noSpamCache || millis() - noSpamTimer > SPAM_TIMEOUT) {
+      noSpamCache = text;
+      noSpamTimer = millis();
+      Serial.println(text);    
+    }
   }
 }
 

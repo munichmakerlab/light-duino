@@ -36,6 +36,7 @@
 #include "eeprom.h"
 #include "switches.h"
 
+
 /*
  * MQTT methods
  */
@@ -77,21 +78,25 @@ void mqttMessageReceived(const MQTT::Publish& pub) {
 
 bool initializeMQTT() {
   if (WiFi.status() == WL_CONNECTED) {
+    DEBUG_PRINTLN_NOSPAM("Initializing MQTT connection");
     if (!mqttClient.connected()) {
       if (connectMQTT(mqtt_user, mqtt_pass, mqtt_host)) {
+        updateDMX();
         publishMQTTMessage(strTopicPrefixID + "controller", strMac + "," + strIPAddr, true);
         // bind callback function to handle incoming mqtt messages
         mqttClient.set_callback(mqttMessageReceived);
-
         // define what to listen to
         subscribeMQTTTopic(strTopicPrefixID + "set");
 
         return true;
       }
+      return false;
     } else {
       return true;
     }
   }
+  
+  DEBUG_PRINTLN_NOSPAM("Waiting for WiFi...");
   return false;
 }
 
@@ -175,7 +180,7 @@ void setupWifi() {
     WiFi.begin(ssid, password);
 
     // Wait for connection
-    while(WiFi.status() != WL_CONNECTED or millis() - startConnectionAttempt > wifiTimeout) {
+    while(WiFi.status() != WL_CONNECTED && millis() - startConnectionAttempt > wifiTimeout) {
       delay(100);
       DEBUG_PRINT(".");
     }
@@ -250,14 +255,13 @@ void setup() {
 
 void loop() {    
   // check for connection and process MQTT
-  if (processMQTTLoop()) {
-    // MQTT connection is alive  
+  if (mqttClient.loop()) {
+    // MQTT connection is alive
     // process new mqtt messages
     if (mqttNewMessage)
       processMQTTMessage();
   } else {
     // No MQTT Connection, reinitialize
-    DEBUG_PRINTLN("Reinitializing MQTT connection");
     initializeMQTT();
   }
 

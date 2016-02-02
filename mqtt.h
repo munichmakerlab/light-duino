@@ -21,6 +21,9 @@ bool mqttNewMessage = false;
 String mqttTopic   = "";
 String mqttPayload = "";
 
+
+void updateDMX();
+
 IPAddress server(0, 0, 0, 0);
 
 WiFiClientSecure client;  // with TLS 
@@ -54,20 +57,10 @@ bool connectMQTT(String strUser, String strPass, String strHost, uint16_t port =
     if (mqttClient.connect(MQTT::Connect(mqtt_client_id).set_auth(strUser, strPass).set_will(strTopicPrefixID + "controller", "", 1, true))) {
       MQTTconnected = true;
     }
+    updateDMX();
     delay(10);
   }
   return MQTTconnected;
 }
-
-bool processMQTTLoop() {
-  // handle mqtt messages and wifi connection
-  if (mqttClient.connected()) {
-    mqttClient.loop();
-    return true;
-  }
-  return false;
-}
-
-
 
 #endif //mqtt_h
