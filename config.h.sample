@@ -40,10 +40,10 @@
 const bool useWifiManager  =  0;
 const char *ssid           =  "-";
 const char *password       =  "-";
-const int wifiTimeout      =  20000;
+const int wifiTimeout      =  1000;
 
 // mqtt topic
-String strTopic = "DMX";
+String strTopic = "mumalab/DMX";
 
 // mqtt broker config
 const char *mqtt_host      =  "iot.eclipse.org";
