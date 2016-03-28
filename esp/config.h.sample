@@ -1,0 +1,30 @@
+#ifndef config_h
+#define config_h
+
+// Switches
+const bool switchesEnabled = 1;
+// indices match to each other
+int switchPin[]           = {13, 14, 12, 4}; // tested values on ESP12e: 4, 12-14
+int matchingDmxChannels[] = {1, 2, 3, 4};
+int matchingDmxChannelsDoubleClick[] = {16, 15, 14, 13};
+
+// EEPROM save delay
+unsigned long minimumWaitBetweenSaves = 60000; // in ms
+unsigned long maximumWaitBetweenSaves = 600000;
+
+// maximum number of channels
+#define intMaxChannel 60
+
+#define WIFI_SSID "munichmakerlab"
+#define WIFI_PSK "*********"
+
+#define MQTT_HOST "mqtt.mumalab.space"
+#define MQTT_PORT 1883
+#define MQTT_USER "dmxcontroller"
+#define MQTT_PASSWORD "********"
+#define MQTT_CLIENT_ID "dmxtest1234"
+#define MQTT_TOPIC_CONTROLLER "mumalab/stage/DMX/2/controller"
+#define MQTT_TOPIC_SUBSCRIBE "mumalab/stage/DMX/2/set"
+#define MQTT_TOPIC_STATE "mumalab/stage/DMX/2/state"
+
+#endif //config_h

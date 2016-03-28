@@ -1,18 +1,3 @@
-#ifndef switches_h
-#define switches_h
-
-/*
- *  light-duino v2
- *  MQTT <-> DMX controller with hw switches, based on ESP8266 
- *  See attached Readme.md for details
- *  
- *  This is based on the work of Jorgen (aka Juergen Skrotzky, JorgenVikingGod@gmail.com), buy him a beer. ;-) 
- *  Rest if not noted otherwise by Peter Froehlich, tarwin@tarwin.de - Munich Maker Lab e.V. (January 2016)
- *  
- *  Published under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
- *  You'll find a copy of the licence text in this repo. 
- */
-
 int arrayEntries = sizeof(matchingDmxChannels)/sizeof(int);
 
 // DEBOUNCE VARS
@@ -28,10 +13,9 @@ long debounceDelay = 50;
 void activateChannel(int index, int channel) {
   activated[index] = 0;
   toggleChannel(channel);
-  dmxApplyChanges();  
+  updateStatesEntry();
 }
 
-// Debounce by Severin Schols
 void debounce(int index) {
   // read the state of the switch into a local variable:
   int reading = digitalRead(switchPin[index]);
@@ -61,8 +45,6 @@ void debounce(int index) {
 
       // only toggle the activation if the new button state is HIGH
       if (buttonState[index] == LOW) {
-        DEBUG_PRINT("Got action from button on pin "); 
-        DEBUG_PRINTLN(switchPin[index]);
 
         // if the activation flag is already set, trigger the double click action
         if (activated[index]) { 
@@ -88,12 +70,7 @@ void checkSwitches() {
 }
 
 void setupSwitches() {
-  DEBUG_PRINT("Setting up ");
-  DEBUG_PRINT(arrayEntries);
-  DEBUG_PRINTLN(" switches");
   for ( int i = 0; i < arrayEntries; i++ ) {
     pinMode(switchPin[i], INPUT_PULLUP);
   } 
 }
-
-#endif 
