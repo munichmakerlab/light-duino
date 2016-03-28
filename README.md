@@ -28,5 +28,6 @@ A DMX transciver like MAX485 needs to be connected to GPIO 2 (U1TXD) of the ESP
 ### atmega
 Since we're using the internal oscillator, and thus running at only 8 Mhz, we need to use a different hardware setup in the Arduino IDE. Go to https://www.arduino.cc/en/Tutorial/ArduinoToBreadboard and follow the steps under "Minimal Circuit (Eliminating the External Clock)".
 * DMXsimple from Arduino Library Manager
+
 ### esp
 * PubSubClient from Arduino Library Manager
