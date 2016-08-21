@@ -12,7 +12,7 @@ int matchingDmxChannelsDoubleClick[] = {16, 15, 14, 13};
 unsigned long minimumWaitBetweenSaves = 60000; // in ms
 unsigned long maximumWaitBetweenSaves = 600000;
 
-// maximum number of channels
+// maximum number of channels, if you go over a certain size, you'll need to modify you PubSubClient.h (MQTT_MAX_PACKET_SIZE) 
 #define intMaxChannel 60
 
 #define WIFI_SSID "munichmakerlab"
